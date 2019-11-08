@@ -1,4 +1,4 @@
-# Functional Clustering Script, Cohort 1 Only, Other Script will be for DCC
+# Functional Clustering Script, Other Script will be for DCC
 # Emilia Grzesiak, 09/09/2019
 
 #libraries:
@@ -108,7 +108,7 @@ HR_InterestDay <- HR[,c('subject_id', 'measure', 'ftime', 'index_day')] %>% grou
 HR_InterestDay <- setDT(HR_InterestDay)
 #plot median + IQR HR per hour every day, line plot
 HR_hourly <- HR_InterestDay %>% group_by(subject_id, ftime=cut(ftime, "60 min")) %>%
-  dplyr::summarize(median_measure = median(measure), index_day = min(index_day))
+  dplyr::summarize(measure = median(measure), index_day = min(index_day))
 HR_hourly$ftime <- as.POSIXct(HR_hourly$ftime)
 HR_hourly$ftime <- format(HR_hourly$ftime, format="%H:%M:%S")
 HR_hourly$ftime <- as.POSIXct(paste(HR_hourly$index_day, HR_hourly$ftime), format="%d %H")
@@ -117,20 +117,14 @@ HR_hourly_plot <- ggplot(HR_hourly, aes(x=factor(ftime), y=median_measure, group
   geom_line(aes(colour=subject_id))
 print(HR_hourly_plot)
 
-
-
-
-
 #rm(HR)
-
 #TEMP_day0$ftime <-format(TEMP_day0$ftime, format="%H:%M:%S")
-
 #reshape data to accomodate fda.usa package's needs before functional clustering
 matrix2cluster <- function(input_dataframe, number_of_clusters){
-  HR_hourly_test <- dcast(data = input_dataframe, formula = ftime~subject_id, 
-                          fun.aggregate = sum,value.var = "median_measure")
-  ftime_HR <- HR_hourly_test[-1]
-  row.names(ftime_HR) <- HR_hourly_test$ftime
+  HR_hourly_test <- dcast(data = input_dataframe[,c("subject_id", "ftime", "measure")], 
+                          formula = ftime~subject_id, value.var = "measure")
+  ftime_HR <- HR_hourly_test[,-1]
+  row.names(ftime_HR) <- unique(HR_hourly_test$ftime)
   HR_matrix <- data.matrix(ftime_HR)
   HR_matrix[HR_matrix == 0] <- NA
   for(i in 1:ncol(HR_matrix)){
@@ -145,70 +139,34 @@ matrix2cluster <- function(input_dataframe, number_of_clusters){
 }
 
 out.fd1 <- matrix2cluster(HR_hourly, 2)
-
-HR_hourly_test <- dcast(data = HR_hourly, formula = ftime~subject_id, 
-                         fun.aggregate = sum,value.var = "median_measure")
-ftime_HR <- HR_hourly_test[-1]
-row.names(ftime_HR) <- HR_hourly_test$ftime
-
-HR_matrix <- data.matrix(ftime_HR)
-HR_matrix[HR_matrix == 0] <- NA
-
-for(i in 1:ncol(HR_matrix)){
-  HR_matrix[is.na(HR_matrix[,i]), i] <- mean(HR_matrix[,i], na.rm = TRUE)
-}
-
-#HR_matrix_cut <- HR_matrix[35:95,]
-rownames(HR_matrix) <- NULL
-HR_matrix <- t(HR_matrix)
-HR_matrix_norm <- t(apply(HR_matrix, 1, function(x)(x-min(x))/(max(x)-min(x))))
-
-# Unsupervised classification
-out.fd1=kmeans.fd(HR_matrix, ncl=2, draw=TRUE, par.ini=list(method="exact"))
-include_list <- c("PROM001", "PROM002", "PROM003", "PROM004", "PROM005",
-                  "PROM006", "PROM008", "PROM009", "PROM010", "PROM012",
-                  "PROM014", "PROM016", "PROM017", "PROM018", "PROM019",
-                  "PROM020", "PROM022", "PROM024", "PROM025", "PROM028",
-                  "PROM030", "PROM031", "PROM032", "PROM033", "PROM035",
-                  "PROM036", "PROM037", "PROM038", "PROM039") 
-
-not_include_list <- c("PROM007", "PROM011", "PROM013", "PROM015", "PROM021", 
-                      "PROM027", "PROM029", "PROM034") 
-
-cluster2 <- HR_matrix[include_list, ]
-cluster3 <- HR_matrix[not_include_list, ]
-
-out.fd2=kmeans.fd(cluster2, ncl=2, draw=TRUE, par.ini=list(method="exact"))
-
-out.fd3=kmeans.fd(cluster3, ncl=2, draw=TRUE, par.ini=list(method="exact"))
-
-out.fd4=kmeans.fd(HR_matrix_norm, ncl=2, draw=TRUE, par.ini=list(method="exact"))
+#include_list <- c("PROM001", "PROM002", "PROM003", "PROM004", "PROM005",
+#                  "PROM006", "PROM008", "PROM009", "PROM010", "PROM012",
+#                  "PROM014", "PROM016", "PROM017", "PROM018", "PROM019",
+#                  "PROM020", "PROM022", "PROM024", "PROM025", "PROM028",
+#                  "PROM030", "PROM031", "PROM032", "PROM033", "PROM035",
+#                  "PROM036", "PROM037", "PROM038", "PROM039") 
+#not_include_list <- c("PROM007", "PROM011", "PROM013", "PROM015", "PROM021", 
+#                      "PROM027", "PROM029", "PROM034") 
+#cluster2 <- HR_matrix[include_list, ]
+#cluster3 <- HR_matrix[not_include_list, ]
+#out.fd2=kmeans.fd(cluster2, ncl=2, draw=TRUE, par.ini=list(method="exact"))
+#out.fd3=kmeans.fd(cluster3, ncl=2, draw=TRUE, par.ini=list(method="exact"))
+#out.fd4=kmeans.fd(HR_matrix_norm, ncl=2, draw=TRUE, par.ini=list(method="exact"))
 
 #now looking at days/night individually
-HR_night <- subset(HR_hourly, format(ftime, '%H') %in% 
-                             c("02","03","04","05","06"))
-HR_day <- subset(HR_hourly, format(ftime, '%H') %notin% 
-                           c("02","03","04","05","06"))
+HR_sameTime <- HR[,c("subject_id", "ftime", "measure", "index_day")]
+HR_sameTime$ftime <- format(HR_sameTime$ftime, format="%H:%M:%S")
+HR_sameTime$index_date <- as.Date(HR_sameTime$index_day, format = "%j", origin = "1.1.2014")
+HR_sameTime$ftime <- as.POSIXct(paste(HR_sameTime$index_date, 
+                                      HR_sameTime$ftime), format="%Y-%m-%d %H:%M:%S")
+
+HR_night <- subset(HR_sameTime, format(ftime, '%H') %in%  c("01","02","03","04","05","06"))
+HR_day <- subset(HR_sameTime, format(ftime, '%H') %notin% c("01", "02","03","04","05","06"))
 #day/night 2
 HR_night_2 <- subset(HR_night, index_day==2)
 HR_day_2 <- subset(HR_day, index_day==2)
 
-HR_night_2_flip <- dcast(data = HR_night_2, formula = ftime~subject_id, 
-                        fun.aggregate = sum,value.var = "median_measure")
-HR_night_2_flip <- HR_night_2_flip[-1]
-row.names(HR_night_2_flip) <- HR_night_2$ftime
-
-HR_night2_matrix <- data.matrix(HR_night_2_flip)
-HR_night2_matrix[HR_night2_matrix == 0] <- NA
-
-for(i in 1:ncol(HR_night2_matrix)){
-  HR_night2_matrix[is.na(HR_night2_matrix[,i]), i] <- mean(HR_night2_matrix[,i], na.rm = TRUE)
-}
-
-#HR_matrix_cut <- HR_matrix[35:95,]
-rownames(HR_night2_matrix) <- NULL
-HR_night2_matrix <- t(HR_night2_matrix)
-out.fd5=kmeans.fd(HR_night2_matrix, ncl=2, draw=TRUE, par.ini=list(method="exact"))
+out.fd5 <- matrix2cluster(HR_night_2,3)
 
 #test<- t(HR_matrix)
 #HR_fdata <- fdata(test)
