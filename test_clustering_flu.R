@@ -166,7 +166,8 @@ HR_day <- subset(HR_sameTime, format(ftime, '%H') %notin% c("01", "02","03","04"
 HR_night_2 <- subset(HR_night, index_day==2)
 HR_day_2 <- subset(HR_day, index_day==2)
 
-out.fd5 <- matrix2cluster(HR_night_2,3)
+cluster_HRnight2 <- matrix2cluster(HR_night_2,3)
+cluster_HRday2 <- matrix2cluster(HR_day_2,3)
 
 #test<- t(HR_matrix)
 #HR_fdata <- fdata(test)
