@@ -71,7 +71,7 @@ HR$ftime <- anytime(HR$tod, tz='America/New_York')
 ACC$ftime <- anytime(ACC$tod, tz='America/New_York')
 
 #calculate root mean squared for ACC values
-ACC$measure <- sqrt(1/3*(ACC$ACC_x^2 + ACC$ACC_y^2 + ACC$ACC_z^2))
+ACC$measure <- sqrt((ACC$ACC_x^2 + ACC$ACC_y^2 + ACC$ACC_z^2))
 
 #index days to standardize dates across cohorts
 HR <- HR[,index_day := .GRP, by = .(subject_id, day(HR$ftime))]
@@ -96,8 +96,19 @@ hourDay_boxplots <- function(timeseries_dataframe){
     facet_wrap(subject_id~.)+
     #scale_x_discrete(labels=format.Date(ACC_1$ftime, "%H"))+
     theme(axis.text.x= element_text(size=7, angle=-90, hjust=1))+
+    #coord_cartesian(ylim=c(mean(timeseries_dataframe$measure)-2*sd(timeseries_dataframe$measure), 
+    #                       mean(timeseries_dataframe$measure)+3*sd(timeseries_dataframe$measure)))+
     #stat_summary(fun.data = mean.n, geom = "text", fun.y = mean, colour = "red") +
     xlab("Day:hour") +
     ylab ("magnitude")
   return(graph_output) 
 }
+
+ACC_tiny <- ACC[ACC$index_day==3 | ACC$index_day==4]
+HR_tiny <- HR[(HR$index_day==3 | HR$index_day==4)&(
+  HR$subject_id=="PROM001" | HR$subject_id=="PROM002" | 
+    HR$subject_id=="PROM003" | HR$subject_id=="PROM004")]
+ACC_tinybox<- hourDay_boxplots(ACC_tiny)
+print(ACC_tinybox)
+HR_tinybox <- hourDay_boxplots(HR_tiny)
+print(HR_tinybox)

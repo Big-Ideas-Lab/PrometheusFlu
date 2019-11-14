@@ -63,19 +63,24 @@ SHED <- fread(file="/Users/emiliagrzesiak/Downloads/vw_PR_SHEDDING.csv",
               header = TRUE, sep = "\t")
 SYMP <- fread(file="/Users/emiliagrzesiak/Downloads/vw_PR_SYMPTOM.csv",
               header=TRUE, sep= "\t")
+SHED <- setDT(SHED, keep.rownames=TRUE, key=NULL, check.names=FALSE)
+SYMP <- setDT(SYMP, keep.rownames=TRUE, key=NULL, check.names=FALSE)
 SHED <- subset(SHED, subject_id %notin% c("PROM023","PROM026"))
 SYMP <- subset(SYMP, subject_id %notin% c("PROM023","PROM026"))
+
 #SYMPTOMS + SHEDDING ANALYSIS
 
 #calculate symptom/shedding scores
 #symptom/shedding/PCR data manipulation
 SYMP$sx_day <- substring(SYMP$sx_day, 2)
-SYMP$sx_day <- as.numeric(SYMP$sx_day)+2
+SYMP$sx_day <- as.numeric(SYMP$sx_day)+1
 colnames(SYMP)[2] <- "timepoint"
 SYMP$symp_score <- rowSums(SYMP[,7:24])
 SYMP[is.na(SYMP)] <- 0
 SHED$timepoint <- substring(SHED$timepoint, 2)
-SHED$timepoint <- as.numeric(SHED$timepoint)+2
+SHED$timepoint <- as.numeric(SHED$timepoint)+1
+SHED$timepoint[SHED$timepoint==0] <- 1
+SYMP$timepoint[SYMP$timepoint==0] <- 1
 
 SYMP <- SYMP %>% group_by(subject_id, timepoint) %>% 
   dplyr::summarize(symp_score = mean(symp_score), pcr_at_discharge = min(pcr_at_discharge),
@@ -122,7 +127,7 @@ totalSymp_heat <- ggplot(shed_score_pcr_perDay, aes(timepoint, subject_id, fill=
   scale_fill_gradient(low="white", high="blue")+
   theme(panel.background = element_rect(fill = "white", colour = "grey50"))+
   scale_x_continuous(breaks = sort(shed_score_pcr_perDay$timepoint[1:12]), 
-                     labels=  c("Baseline",3,4,5,6,7,8,9,10,11,12,"Discharge Date"))+
+                     labels=  c("Baseline",2,3,4,5,6,7,8,9,10,11,"Discharge Date"))+
   xlab("Day")+
   ylab("Subject ID")+
   ggtitle("Total Symptom Score per Day")+
@@ -135,7 +140,7 @@ feelingSymp_heat <- ggplot(shed_score_pcr_perDay, aes(timepoint, subject_id, fil
   scale_fill_gradient(low="white", high="red")+
   theme(panel.background = element_rect(fill = "white", colour = "grey50"))+
   scale_x_continuous(breaks = sort(shed_score_pcr_perDay$timepoint[1:12]), 
-                     labels=  c("Baseline",3,4,5,6,7,8,9,10,11,12,"Discharge Date"))+
+                     labels=  c("Baseline",2,3,4,5,6,7,8,9,10,11,"Discharge Date"))+
   xlab("Day")+
   ylab("Subject ID")+
   ggtitle("Subjective Symptom Score per Day")+
@@ -148,7 +153,7 @@ showingSymp_heat <- ggplot(shed_score_pcr_perDay, aes(timepoint, subject_id, fil
   scale_fill_gradient(low="white", high="green")+
   theme(panel.background = element_rect(fill = "white", colour = "grey50"))+
   scale_x_continuous(breaks = sort(shed_score_pcr_perDay$timepoint[1:12]), 
-                     labels=  c("Baseline",3,4,5,6,7,8,9,10,11,12,"Discharge Date"))+
+                     labels=  c("Baseline",2,3,4,5,6,7,8,9,10,11,"Discharge Date"))+
   xlab("Day")+
   ylab("Subject ID")+
   ggtitle("Objective Symptom Score per Day")+
@@ -161,7 +166,7 @@ shedding_heat <- ggplot(shed_score_pcr_perDay, aes(timepoint, subject_id, fill=s
   scale_fill_gradient(low="white", high="black")+
   theme(panel.background = element_rect(fill = "white", colour = "grey50"))+
   scale_x_continuous(breaks = sort(shed_score_pcr_perDay$timepoint[1:12]), 
-                     labels=  c("Baseline",3,4,5,6,7,8,9,10,11,12,"Discharge Date"))+
+                     labels=  c("Baseline",2,3,4,5,6,7,8,9,10,11,"Discharge Date"))+
   xlab("Day")+
   ylab("Subject ID")+
   ggtitle("Shedding Score per Day")+
@@ -226,7 +231,7 @@ rm(HR_spread_plot_spec_pos)
 HR_hours_perSubject <- HR_shed %>% group_by(subject_id, index_day) %>%
   dplyr::summarize(min.hour = min(as.numeric(format(ftime, format = "%H"))), 
                    max.hour = max(as.numeric(format(ftime, format = "%H"))))
-
+#rm(HR)
 
 # plot hours of day measured for each day and each subject
 HR_time_measured_plot <- ggplot(HR_hours_perSubject, aes(index_day)) +
