@@ -55,6 +55,7 @@ library("SnowballC")
 library("tm")
 library("fclust")
 library("fda.usc")
+library("abind")
 
 # all Cohort data:
 HR <- fread(file="/Users/emiliagrzesiak/Cohort_Combined/HR.csv",
@@ -81,31 +82,41 @@ HR$is_baseline[HR$index_day < 2] <- "True"
 #symptom/shedding/PCR MANIPULATION
 SHED <- subset(SHED, subject_id %notin% c("PROM023","PROM026"))
 SYMP <- subset(SYMP, subject_id %notin% c("PROM023","PROM026"))
+SHED <- setDT(SHED, keep.rownames=TRUE, key=NULL, check.names=FALSE)
+SYMP <- setDT(SYMP, keep.rownames=TRUE, key=NULL, check.names=FALSE)
 SYMP$sx_day <- substring(SYMP$sx_day, 2)
-SYMP$sx_day <- as.numeric(SYMP$sx_day)+2
+SYMP$sx_day <- as.numeric(SYMP$sx_day)+1
 colnames(SYMP)[2] <- "timepoint"
 SYMP$symp_score <- rowSums(SYMP[,7:24])
 SYMP[is.na(SYMP)] <- 0
 SHED$timepoint <- substring(SHED$timepoint, 2)
-SHED$timepoint <- as.numeric(SHED$timepoint)+2
+SHED$timepoint <- as.numeric(SHED$timepoint)+1
+SHED$timepoint[SHED$timepoint==0] <- 1
+SYMP$timepoint[SYMP$timepoint==0] <- 1
 
 SYMP <- SYMP %>% group_by(subject_id, timepoint) %>% 
-  dplyr::summarize(symp_score = mean(symp_score), pcr_at_discharge = min(pcr_at_discharge))
-score_per_person <- SYMP %>% group_by(subject_id) %>%
-  dplyr::summarize(total_symptom_score=sum(symp_score), PCR=min(pcr_at_discharge))
-shed_per_person <- SHED %>% group_by(subject_id) %>%
-  dplyr::summarize(total_shed_score=sum(shedding_value))
-shed_score_pcr <- merge(score_per_person, shed_per_person, by="subject_id")
+  dplyr::summarize(symp_score = mean(symp_score), pcr_at_discharge = min(pcr_at_discharge),
+                   feeling_symp = sum(sx_musclesoreness,sx_fatigue,sx_headache,sx_ear_pain,
+                                      sx_throat_discomfort,sx_chest_pain,sx_chills,sx_malaise,
+                                      sx_itchy_eyes),
+                   showing_symp = sum(sx_fever,sx_stuffy_nose,sx_runny_nose,sx_sneezing,sx_coughing,
+                                      sx_soba,sx_hoarseness,sx_diarrhea,sx_wheezy_chest))
+shed_score_pcr_perDay <- merge(SYMP, SHED, by=c("subject_id", "timepoint"))
+
+#score_per_person <- SYMP %>% group_by(subject_id) %>%
+#  dplyr::summarize(total_symptom_score=sum(symp_score), PCR=min(pcr_at_discharge))
+#shed_per_person <- SHED %>% group_by(subject_id) %>%
+#  dplyr::summarize(total_shed_score=sum(shedding_value))
+#shed_score_pcr <- merge(score_per_person, shed_per_person, by="subject_id")
 
 #criteria for being labelled "sick"
 sick.SYMP <- subset(SYMP, pcr_at_discharge == 'Positive')
 sickDays <- merge(sick.SYMP, SHED, by= c('subject_id', 'timepoint'))
 
-#HR_day0 <- HR_1[,c('subject_id', 'measure', 'ftime')] %>% group_by(subject_id) %>%
-#  filter(as_date(ftime) == min(as_date(ftime)))  #change to include more days later
 HR_InterestDay <- HR[,c('subject_id', 'measure', 'ftime', 'index_day')] %>% group_by(subject_id) %>%
   filter(index_day != 1)
 HR_InterestDay <- setDT(HR_InterestDay)
+
 #plot median + IQR HR per hour every day, line plot
 HR_hourly <- HR_InterestDay %>% group_by(subject_id, ftime=cut(ftime, "60 min")) %>%
   dplyr::summarize(measure = median(measure), index_day = min(index_day))
@@ -168,6 +179,64 @@ HR_day_2 <- subset(HR_day, index_day==2)
 
 cluster_HRnight2 <- matrix2cluster(HR_night_2,3)
 cluster_HRday2 <- matrix2cluster(HR_day_2,3)
+
+#FUNCTIONAL CLUSTERING ON SHEDDING AND SYMPTOM DATA 
+
+#some hacky stuff to get 3d matrix in desired format...
+daily_clinic_1 <- shed_score_pcr_perDay[,c('subject_id','timepoint','symp_score')]
+daily_clinic_2 <- shed_score_pcr_perDay[,c('subject_id','timepoint','shedding_value')]
+daily_clinic_3 <- shed_score_pcr_perDay[,c('subject_id','timepoint','feeling_symp')]
+daily_clinic_4 <- shed_score_pcr_perDay[,c('subject_id','timepoint','showing_symp')]
+daily_clinic_1 <- dcast(daily_clinic_1, formula = timepoint~subject_id, value.var="symp_score")
+daily_clinic_2 <- dcast(daily_clinic_2, formula = timepoint~subject_id, value.var="shedding_value")
+daily_clinic_3 <- dcast(daily_clinic_3, formula = timepoint~subject_id, value.var="feeling_symp")
+daily_clinic_4 <- dcast(daily_clinic_4, formula = timepoint~subject_id, value.var="showing_symp")
+#daily_clinic_1$subject_id <- c("symp_score")
+#daily_clinic_2$subject_id <- c("shedding_value")
+daily_clinic_1 <- daily_clinic_1[,-1]
+daily_clinic_2 <- daily_clinic_2[,-1]
+daily_clinic_3 <- daily_clinic_3[,-1]
+daily_clinic_4 <- daily_clinic_4[,-1]
+row.names(daily_clinic_1) <- unique(sort(shed_score_pcr_perDay$timepoint))
+row.names(daily_clinic_2) <-  unique(sort(shed_score_pcr_perDay$timepoint))
+row.names(daily_clinic_3) <- unique(sort(shed_score_pcr_perDay$timepoint))
+row.names(daily_clinic_4) <-  unique(sort(shed_score_pcr_perDay$timepoint))
+daily_clinic_1<-data.matrix(daily_clinic_1)
+daily_clinic_2<-data.matrix(daily_clinic_2)
+daily_clinic_3<-data.matrix(daily_clinic_3)
+daily_clinic_4<-data.matrix(daily_clinic_4)
+
+#daily_clinic_total <- rbind(daily_clinic_1, daily_clinic_2)
+clinic_basis_bspline <-create.fourier.basis(c(1,12), nbasis=5, period=12) #or nbasis 5
+#create.bspline.basis(c(1,12), nbasis=12, norder=2)
+y_clinic <- setNames(as.numeric(c(1:12)), as.numeric(c(1:12)))
+clinic_fd_1 <-smooth.basis(y_clinic, daily_clinic_1, clinic_basis_bspline)$fd
+clinic_fd_2 <-smooth.basis(y_clinic, daily_clinic_2, clinic_basis_bspline)$fd
+clinic_fd_3 <-smooth.basis(y_clinic, daily_clinic_3, clinic_basis_bspline)$fd
+clinic_fd_4 <-smooth.basis(y_clinic, daily_clinic_4, clinic_basis_bspline)$fd
+
+#fdata_clinic_1 <- fdata(daily_clinic_1)
+#fdata_clinic_2 <- fdata(daily_clinic_2)
+#fdata_clinic_1$data <- as.numeric(fdata_clinic_1$data)
+#fdata_clinic_2$data <- as.numeric(fdata_clinic_2$data)
+#fdata_list <- list(fdata_clinic_1,fdata_clinic_2)
+
+#fd_list <- list(clinic_fd_1,clinic_fd_2)
+fd_list <- list(clinic_fd_2,clinic_fd_3, clinic_fd_4)
+cluster_clinic <- funHDDC(data=fd_list, K=3, model="AkjBkQkDk", init="random",threshold=0.2)
+plot(clinic_fd_1, col=cluster_clinic$class, 
+     xlab = "Day", ylab = "Symptom Score")
+
+subject_class <- data.frame(subject_id = unique(shed_score_pcr_perDay$subject_id),
+                            class = paste("Class", as.character(cluster_clinic$class)))
+#fclust_plot_totalsymp <- ggplot(clinic_fd_1)
+#daily_clinic_matrix <- abind(split(daily_clinic_total, daily_clinic_total$subject_id), along=3)
+#daily_clinic_matrix <- data.matrix(daily_clinic_matrix)
+#daily_clinic_matrix <- daily_clinic_matrix[,-1,]
+#clinical_fdata <- fdata(daily_clinic_matrix, fdata2d=TRUE)
+#clinical_cluster=kmeans.fd(clinical_fdata, ncl=3, draw=TRUE, par.ini=list(method="exact"))
+
+
 
 #test<- t(HR_matrix)
 #HR_fdata <- fdata(test)
