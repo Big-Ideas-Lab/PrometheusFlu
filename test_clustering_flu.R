@@ -207,13 +207,20 @@ daily_clinic_3<-data.matrix(daily_clinic_3)
 daily_clinic_4<-data.matrix(daily_clinic_4)
 
 #daily_clinic_total <- rbind(daily_clinic_1, daily_clinic_2)
-clinic_basis_bspline <-create.fourier.basis(c(1,12), nbasis=5, period=12) #or nbasis 5
+clinic_basis_bspline3 <-create.fourier.basis(c(1,12), nbasis=3, period=12)
+clinic_basis_bspline5 <-create.fourier.basis(c(1,12), nbasis=5, period=12)#or nbasis 5
 #create.bspline.basis(c(1,12), nbasis=12, norder=2)
 y_clinic <- setNames(as.numeric(c(1:12)), as.numeric(c(1:12)))
-clinic_fd_1 <-smooth.basis(y_clinic, daily_clinic_1, clinic_basis_bspline)$fd
-clinic_fd_2 <-smooth.basis(y_clinic, daily_clinic_2, clinic_basis_bspline)$fd
-clinic_fd_3 <-smooth.basis(y_clinic, daily_clinic_3, clinic_basis_bspline)$fd
-clinic_fd_4 <-smooth.basis(y_clinic, daily_clinic_4, clinic_basis_bspline)$fd
+clinic_fd_1B3 <-smooth.basis(y_clinic, daily_clinic_1, clinic_basis_bspline3)$fd
+clinic_fd_2B3 <-smooth.basis(y_clinic, daily_clinic_2, clinic_basis_bspline3)$fd
+clinic_fd_3B3 <-smooth.basis(y_clinic, daily_clinic_3, clinic_basis_bspline3)$fd
+clinic_fd_4B3 <-smooth.basis(y_clinic, daily_clinic_4, clinic_basis_bspline3)$fd
+
+clinic_fd_1B5 <-smooth.basis(y_clinic, daily_clinic_1, clinic_basis_bspline5)$fd
+clinic_fd_2B5 <-smooth.basis(y_clinic, daily_clinic_2, clinic_basis_bspline5)$fd
+clinic_fd_3B5 <-smooth.basis(y_clinic, daily_clinic_3, clinic_basis_bspline5)$fd
+clinic_fd_4B5 <-smooth.basis(y_clinic, daily_clinic_4, clinic_basis_bspline5)$fd
+
 
 #fdata_clinic_1 <- fdata(daily_clinic_1)
 #fdata_clinic_2 <- fdata(daily_clinic_2)
@@ -222,13 +229,24 @@ clinic_fd_4 <-smooth.basis(y_clinic, daily_clinic_4, clinic_basis_bspline)$fd
 #fdata_list <- list(fdata_clinic_1,fdata_clinic_2)
 
 #fd_list <- list(clinic_fd_1,clinic_fd_2)
-fd_list <- list(clinic_fd_2,clinic_fd_3, clinic_fd_4)
-cluster_clinic <- funHDDC(data=fd_list, K=3, model="AkjBkQkDk", init="random",threshold=0.2)
-plot(clinic_fd_1, col=cluster_clinic$class, 
+fd_list3 <- list(clinic_fd_2B3,clinic_fd_3B3, clinic_fd_4B3)
+fd_list5 <- list(clinic_fd_2B5,clinic_fd_3B5, clinic_fd_4B5)
+
+cluster_clinicB3 <- funHDDC(data=fd_list3, K=2:5, 
+                            model=c("AkjBkQkDk", "AkjBQkDk","AkBkQkDk","AkBQkDk","ABQkDk"), 
+                            init="random",threshold=0.2)
+cluster_clinicB5 <- funHDDC(data=fd_list5, K=2:5, 
+                            model=c("AkjBkQkDk", "AkjBQkDk","AkBkQkDk","AkBQkDk","ABQkDk"), 
+                            init="random",threshold=0.2)
+
+
+plot(clinic_fd_1B3, col=cluster_clinicB3$class, 
+     xlab = "Day", ylab = "Symptom Score")
+plot(clinic_fd_1B5, col=cluster_clinicB5$class, 
      xlab = "Day", ylab = "Symptom Score")
 
 subject_class <- data.frame(subject_id = unique(shed_score_pcr_perDay$subject_id),
-                            class = paste("Class", as.character(cluster_clinic$class)))
+                            class = paste("Class", as.character(cluster_clinicB3$class)))
 #fclust_plot_totalsymp <- ggplot(clinic_fd_1)
 #daily_clinic_matrix <- abind(split(daily_clinic_total, daily_clinic_total$subject_id), along=3)
 #daily_clinic_matrix <- data.matrix(daily_clinic_matrix)
