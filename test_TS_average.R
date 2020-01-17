@@ -43,6 +43,7 @@ library(tools)
 library(matrixStats)
 library(RColorBrewer)
 library(stringi)
+library(ggpubr)
 
 #load data
 HR <- fread(file="/Users/emiliagrzesiak/Cohort_Combined/HR.csv",
@@ -97,7 +98,6 @@ shed_per_person <- SHED %>% group_by(subject_id) %>%
   dplyr::summarize(total_shed_score=sum(shedding_value))
 shed_score_pcr <- merge(score_per_person, shed_per_person, by="subject_id")
 shed_score_pcr_perDay <- merge(SYMP, SHED, by=c("subject_id", "timepoint"))
-
 #criteria for being labelled "sick"
 
 sickDef <- shed_score_pcr_perDay %>% group_by(subject_id) %>% 
@@ -134,19 +134,15 @@ totalSymp_heat <- ggplot(shed_score_pcr_perDay, aes(subject_id, timepoint, fill=
                                              draw.llim = TRUE,
                                              ticks = TRUE, 
                                              nbin = 10,
-                                             frame.colour = "black",
-                                             label.position = "bottom",
-                                             barwidth = 10,
-                                             barheight = .8, 
-                                             direction = 'horizontal')) +
+                                             frame.colour = "black"))+
   theme(panel.background = element_rect(fill = "white", colour = "grey50"),
-        legend.position = 'bottom', text = element_text(size=8))+
-  scale_y_continuous(breaks = sort(shed_score_pcr_perDay$timepoint[1:12]), 
-                     labels=  c(1,2,3,4,5,6,7,8,9,10,11,15))+
-  xlab("Subject ID")+
-  ylab("Day")+
-  ggtitle("Total Symptom Score per Day")+
-  labs(fill="Total Symptom Score")+
+        legend.position = 'right', text = element_text(size=10, face="bold"),
+        axis.title.x=element_blank(), axis.title.y=element_blank(),
+        strip.background = element_blank(), strip.text.x = element_blank()) +
+  scale_y_continuous(breaks = c(1,2,3,4,5,6,7,8,9,10,11,12), 
+                     labels=  c(1,2,3,4,5,6,7,8,9,10,11,15),
+                     limits = c(1, 12) )+
+  labs(fill="Total Symp")+
   facet_wrap(~class, scales="free", strip.position = "bottom")
 print(totalSymp_heat)
 rm(totalSymp_heat)
@@ -159,19 +155,15 @@ feelingSymp_heat <- ggplot(shed_score_pcr_perDay, aes(subject_id, timepoint, fil
                                              draw.llim = TRUE,
                                              ticks = TRUE, 
                                              nbin = 10,
-                                             frame.colour = "black",
-                                             label.position = "bottom",
-                                             barwidth = 10,
-                                             barheight = .8, 
-                                             direction = 'horizontal'))+
+                                             frame.colour = "black"))+
   theme(panel.background = element_rect(fill = "white", colour = "grey50"),
-        legend.position = 'bottom', text = element_text(size=8))+
-  scale_y_continuous(breaks = sort(shed_score_pcr_perDay$timepoint[1:12]), 
-                     labels=  c(1,2,3,4,5,6,7,8,9,10,11,15))+
-  xlab("Subject ID")+
-  ylab("Day")+
-  ggtitle("Subjective Symptom Score per Day")+
-  labs(fill="Subjective Symptom Score")+
+        legend.position = 'right', text = element_text(size=10, face = "bold"),
+        axis.title.x=element_blank(), axis.title.y=element_blank(),
+        strip.background = element_blank(), strip.text.x = element_blank())+
+  scale_y_continuous(breaks = c(1,2,3,4,5,6,7,8,9,10,11,12), 
+                     labels=  c(1,2,3,4,5,6,7,8,9,10,11,15),
+                     limits = c(1, 12) )+
+  labs(fill="Subj. Symp")+
   facet_wrap(~class, scales="free", strip.position = "bottom")
 print(feelingSymp_heat)
 rm(feelingSymp_heat)
@@ -185,19 +177,15 @@ showingSymp_heat <- ggplot(shed_score_pcr_perDay, aes(subject_id, timepoint, fil
                                              draw.llim = TRUE,
                                              ticks = TRUE, 
                                              nbin = 10,
-                                             frame.colour = "black",
-                                             label.position = "bottom",
-                                             barwidth = 10,
-                                             barheight = .8, 
-                                             direction = 'horizontal'))+
+                                             frame.colour = "black"))+
   theme(panel.background = element_rect(fill = "white", colour = "grey50"),
-        legend.position = 'bottom', text = element_text(size=8))+
-  scale_y_continuous(breaks = sort(shed_score_pcr_perDay$timepoint[1:12]), 
-                     labels=  c(1,2,3,4,5,6,7,8,9,10,11,15))+
-  xlab("Subject ID")+
-  ylab("Day")+
-  ggtitle("Objective Symptom Score per Day")+
-  labs(fill="Objective Symptom Score")+
+        legend.position = 'right', text = element_text(size=10, face = "bold"),
+        axis.title.x=element_blank(), axis.title.y=element_blank(),
+        strip.background = element_blank(), strip.text.x = element_blank())+
+  scale_y_continuous(breaks = c(1,2,3,4,5,6,7,8,9,10,11,12), 
+                     labels=  c(1,2,3,4,5,6,7,8,9,10,11,15),
+                     limits = c(1, 12) )+
+  labs(fill="Obj. Symp")+
   facet_wrap(~class, scales="free", strip.position = "bottom")
 print(showingSymp_heat)
 rm(showingSymp_heat)
@@ -207,56 +195,38 @@ shedding_heat <- ggplot(shed_score_pcr_perDay, aes(subject_id, timepoint, fill=s
   geom_tile() +
   scale_fill_gradient(low="white", high="black",
                       guide = guide_colorbar(label = TRUE,
-                                             draw.ulim = TRUE, 
-                                             draw.llim = TRUE,
-                                             ticks = TRUE, 
-                                             nbin = 10,
-                                             frame.colour = "black",
-                                             label.position = "bottom",
-                                             barwidth = 10,
-                                             barheight = .8, 
-                                             direction = 'horizontal'))+
+                                              draw.ulim = TRUE, 
+                                              draw.llim = TRUE,
+                                              ticks = TRUE, 
+                                              nbin = 10,
+                                              frame.colour = "black"))+
   theme(panel.background = element_rect(fill = "white", colour = "grey50"),
-        legend.position = 'bottom', text = element_text(size=8))+
-  scale_y_continuous(breaks = sort(shed_score_pcr_perDay$timepoint[1:12]), 
-                     labels=  c(1,2,3,4,5,6,7,8,9,10,11,15))+
-  xlab("Subject ID")+
-  ylab("Day")+
-  ggtitle("Shedding Score per Day")+
-  labs(fill="Shedding Symptom Score")+
+        legend.position = 'right', text = element_text(size=10, face = "bold"),
+        axis.title.x=element_blank(), axis.title.y=element_blank(),
+        strip.background = element_blank(), strip.text.x = element_blank())+
+  scale_y_continuous(breaks = c(1,2,3,4,5,6,7,8,9,10,11,12), 
+                     labels=  c(1,2,3,4,5,6,7,8,9,10,11,15),
+                     limits = c(1, 12))+
+  labs(fill="Shed Value")+
   facet_wrap(~class, scales="free", strip.position = "bottom")
 print(shedding_heat)
 rm(shedding_heat)
 
-all_perDay <- melt(shed_score_pcr_perDay, id.vars=c("subject_id", "class", "timepoint"), 
-                   measure.vars=c("feeling_symp", "showing_symp", "shedding_value", 
-                                  "symp_score"))
+#print(ggdraw() + draw_plot(shedding_heat, x= 0, y=.75, width = 1, height=.25) +
+#        draw_plot(totalSymp_heat, x=0, y=.5, width = 1, height=.25)+
+#        draw_plot(showingSymp_heat, x= 0, y=.25, width = 1, height=.25)+
+#        draw_plot(feelingSymp_heat, x= 0, y=0, width = 1, height=.25))
 
-all_heat <- ggplot(all_perDay, aes(subject_id, timepoint, fill=variable, group=value))+
-  geom_tile() +
-  scale_fill_gradient()+
-  # scale_fill_gradient(low="white", high="black",
-  #                     guide = guide_colorbar(label = TRUE,
-  #                                            draw.ulim = TRUE, 
-  #                                            draw.llim = TRUE,
-  #                                            ticks = TRUE, 
-  #                                            nbin = 10,
-  #                                            frame.colour = "black",
-  #                                            label.position = "bottom",
-  #                                            barwidth = 10,
-  #                                            barheight = .8, 
-  #                                            direction = 'horizontal'))+
-  theme(panel.background = element_rect(fill = "white", colour = "grey50"),
-        legend.position = 'bottom', text = element_text(size=8))+
-  scale_y_continuous(breaks = sort(shed_score_pcr_perDay$timepoint[1:12]), 
-                     labels=  c(1,2,3,4,5,6,7,8,9,10,11,15))+
-  xlab("Subject ID")+
-  ylab("Day")+
-  facet_wrap(~class, scales="free", strip.position = "bottom")
-print(all_heat)
-rm(all_heat)
+figure <- ggarrange(shedding_heat, totalSymp_heat, showingSymp_heat, feelingSymp_heat,
+                    ncol = 1, nrow = 4, align = "v")
+annotate_figure(figure,
+                top = text_grob("Class 1                                                           Class 2                                                       Class 3", 
+                                face = "bold", size = 14),
+                bottom = text_grob("Subject ID", size = 12),
+                left = text_grob("Day", size = 12, rot = 90))
   
 #combine HR and daily shed/symp/pcr info
+HR$subject_id <- stri_sub(HR$subject_id,-2,-1)
 HR_shed <- merge(HR, shed_score_pcr_perDay, by.x=c("subject_id", "index_day"), 
                  by.y=c("subject_id", "timepoint"))
 rm(HR)
@@ -309,9 +279,9 @@ print(HR_spread_plot_spec_pos)
 rm(HR_spread_plot_spec_pos)
 
 # look at hours of day measured
-HR_hours_perSubject <- HR_shed %>% group_by(subject_id, index_day) %>%
-  dplyr::summarize(min.hour = min(as.numeric(format(ftime, format = "%H"))), 
-                   max.hour = max(as.numeric(format(ftime, format = "%H"))))
+#HR_hours_perSubject <- HR_shed %>% group_by(subject_id, index_day) %>%
+#  dplyr::summarize(min.hour = min(as.numeric(format(ftime, format = "%H"))), 
+#                   max.hour = max(as.numeric(format(ftime, format = "%H"))))
 
 #Look at % missing HR data per Unit of Time
 HR_missing_perHour <- HR_shed %>% 
@@ -346,7 +316,7 @@ HR_missing_perHour[is.na(HR_missing_perHour)] <- 0
 HR_missing_data <- ggplot(HR_missing_perHour, aes(index_day, hour, fill = count))+
   geom_tile()+
   facet_wrap(~subject_id, nrow=5)+
-  scale_fill_gradient(low = "teal", high = "salmon",
+  scale_fill_gradient(
                        guide = guide_colorbar(label = TRUE,
                                               draw.ulim = TRUE, 
                                               draw.llim = TRUE,
@@ -358,7 +328,7 @@ HR_missing_data <- ggplot(HR_missing_perHour, aes(index_day, hour, fill = count)
                                               barheight = .8, 
                                               direction = 'horizontal')) +
   theme(panel.background = element_rect(fill = "white", colour = "grey50"),
-        legend.position = 'bottom', text = element_text(size=8))+
+        legend.position = 'bottom', text = element_text(size=10, face = "bold"))+
   scale_x_continuous(breaks = unique(HR_missing_perHour$index_day), 
                      labels=  unique(HR_missing_perHour$index_day))+
   #scale_y_continuous(breaks = unique(HR_missing_perHour$hour), 

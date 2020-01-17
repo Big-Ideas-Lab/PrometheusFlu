@@ -56,6 +56,7 @@ library("tm")
 library("fclust")
 library("fda.usc")
 library("abind")
+library("ggpubr")
 
 # all Cohort data:
 HR <- fread(file="/Users/emiliagrzesiak/Cohort_Combined/HR.csv",
@@ -207,8 +208,14 @@ daily_clinic_3<-data.matrix(daily_clinic_3)
 daily_clinic_4<-data.matrix(daily_clinic_4)
 
 #daily_clinic_total <- rbind(daily_clinic_1, daily_clinic_2)
-clinic_basis_bspline3 <-create.fourier.basis(c(1,12), nbasis=3, period=12)
-clinic_basis_bspline5 <-create.fourier.basis(c(1,12), nbasis=5, period=12)#or nbasis 5
+clinic_basis_bspline3 <- create.bspline.basis(c(1,12), norder=4, names="bspl")
+clinic_basis_bspline5 <- create.bspline.basis(c(1,12), norder=3, names="bspl")
+
+clinic_basis_bspline3 <- create.bspline.basis(c(1,12), nbasis=6, norder=4,  names="bspl")
+clinic_basis_bspline5 <- create.bspline.basis(c(1,12), nbasis=6, norder=3, names="bspl")
+
+clinic_basis_fourier3 <-create.fourier.basis(c(1,12), nbasis=3, period=12)
+clinic_basis_fourier5 <-create.fourier.basis(c(1,12), nbasis=5, period=12)
 #create.bspline.basis(c(1,12), nbasis=12, norder=2)
 y_clinic <- setNames(as.numeric(c(1:12)), as.numeric(c(1:12)))
 clinic_fd_1B3 <-smooth.basis(y_clinic, daily_clinic_1, clinic_basis_bspline3)$fd
@@ -216,34 +223,60 @@ clinic_fd_2B3 <-smooth.basis(y_clinic, daily_clinic_2, clinic_basis_bspline3)$fd
 clinic_fd_3B3 <-smooth.basis(y_clinic, daily_clinic_3, clinic_basis_bspline3)$fd
 clinic_fd_4B3 <-smooth.basis(y_clinic, daily_clinic_4, clinic_basis_bspline3)$fd
 
+clinic_fourier_1B3 <-smooth.basis(y_clinic, daily_clinic_1, clinic_basis_fourier3)$fd
+clinic_fourier_2B3 <-smooth.basis(y_clinic, daily_clinic_2, clinic_basis_fourier3)$fd
+clinic_fourier_3B3 <-smooth.basis(y_clinic, daily_clinic_3, clinic_basis_fourier3)$fd
+clinic_fourier_4B3 <-smooth.basis(y_clinic, daily_clinic_4, clinic_basis_fourier3)$fd
+
 clinic_fd_1B5 <-smooth.basis(y_clinic, daily_clinic_1, clinic_basis_bspline5)$fd
 clinic_fd_2B5 <-smooth.basis(y_clinic, daily_clinic_2, clinic_basis_bspline5)$fd
 clinic_fd_3B5 <-smooth.basis(y_clinic, daily_clinic_3, clinic_basis_bspline5)$fd
 clinic_fd_4B5 <-smooth.basis(y_clinic, daily_clinic_4, clinic_basis_bspline5)$fd
 
 
-#fdata_clinic_1 <- fdata(daily_clinic_1)
-#fdata_clinic_2 <- fdata(daily_clinic_2)
-#fdata_clinic_1$data <- as.numeric(fdata_clinic_1$data)
-#fdata_clinic_2$data <- as.numeric(fdata_clinic_2$data)
-#fdata_list <- list(fdata_clinic_1,fdata_clinic_2)
-
-#fd_list <- list(clinic_fd_1,clinic_fd_2)
 fd_list3 <- list(clinic_fd_2B3,clinic_fd_3B3, clinic_fd_4B3)
+fourier_list3 <- list(clinic_fourier_2B3,clinic_fourier_3B3, clinic_fourier_4B3)
 fd_list5 <- list(clinic_fd_2B5,clinic_fd_3B5, clinic_fd_4B5)
 
-cluster_clinicB3 <- funHDDC(data=fd_list3, K=2:5, 
-                            model=c("AkjBkQkDk", "AkjBQkDk","AkBkQkDk","AkBQkDk","ABQkDk"), 
-                            init="random",threshold=0.2)
-cluster_clinicB5 <- funHDDC(data=fd_list5, K=2:5, 
+cluster_clinicB3 <- funHDDC(data=fourier_list3, K=2:6, itermax= 2000,
                             model=c("AkjBkQkDk", "AkjBQkDk","AkBkQkDk","AkBQkDk","ABQkDk"), 
                             init="random",threshold=0.2)
 
+cluster_clinicB5 <- funHDDC(data=fd_list5, K=2:8, 
+                            model=c("AkjBkQkDk", "AkjBQkDk","AkBkQkDk","AkBQkDk","ABQkDk"), 
+                            init="kmeans",threshold=0.2)
 
-plot(clinic_fd_1B3, col=cluster_clinicB3$class, 
-     xlab = "Day", ylab = "Symptom Score")
-plot(clinic_fd_1B5, col=cluster_clinicB5$class, 
-     xlab = "Day", ylab = "Symptom Score")
+plot(clinic_fourier_3B3, col=cluster_clinicB3$class, 
+     xlab = "Day", main = "Total Symptom Score")
+
+
+par(mfcol=c(2,4))
+total_sympB3 <- plot(clinic_fd_1B3, col=cluster_clinicB3$class, 
+     xlab = "Day", main = "Total Symptom Score")
+total_sympB5 <- plot(clinic_fd_1B5, col=cluster_clinicB5$class, 
+                     xlab = "Day", main = "Total Symptom Score")
+obj_sympB3 <- plot(clinic_fd_3B3, col=cluster_clinicB3$class, 
+                     xlab = "Day", main = "Objective Symptom Score")
+obj_sympB5 <- plot(clinic_fd_3B5, col=cluster_clinicB5$class, 
+                   xlab = "Day", main = "Objective Symptom Score")
+subj_sympB3 <- plot(clinic_fd_4B3, col=cluster_clinicB3$class, 
+                     xlab = "Day", main = "Subjective Symptom Score")
+subj_sympB5 <- plot(clinic_fd_4B5, col=cluster_clinicB5$class, 
+                    xlab = "Day", main = "Subjective Symptom Score")
+shed_B3 <- plot(clinic_fd_2B3, col=cluster_clinicB3$class, 
+                     xlab = "Day", main = "Shedding")
+shed_B5 <- plot(clinic_fd_2B5, col=cluster_clinicB5$class, 
+                xlab = "Day", main = "Shedding")
+dev.off()
+# all_Bs <- ggarrange(total_sympB3, obj_sympB3, subj_sympB3, shed_B3, 
+#                     total_sympB5, obj_sympB5, subj_sympB5, shed_B5,
+#                     ncol = 2, nrow = 4, align = "v")
+# annotate_figure(all_Bs,
+#                 top = text_grob("Class 1                                                           Class 2                                                       Class 3", 
+#                                 face = "bold", size = 14),
+#                 bottom = text_grob("Subject ID", size = 12),
+#                 left = text_grob("Day", size = 12, rot = 90))
+
 
 subject_class <- data.frame(subject_id = unique(shed_score_pcr_perDay$subject_id),
                             class = paste("Class", as.character(cluster_clinicB3$class)))
